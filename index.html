@@ -2,67 +2,88 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>喵屋大冒险：幺幺与石榴</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>喵界荣耀：双生守护</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* --- 整体风格：神秘遗迹 --- */
-        body { margin: 0; overflow: hidden; background-color: #2c3e50; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; touch-action: none; user-select: none; }
-        canvas { display: block; }
+        /* --- 沉浸式游戏样式 --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; }
         
-        /* 菜单层 */
-        #menu-layer {
+        /* 全屏画布 */
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* UI 层 */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+
+        /* 登录界面 */
+        #login-screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 200;
-            color: white;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 999; pointer-events: auto;
+        }
+        .login-box {
+            background: rgba(0,0,0,0.8); padding: 30px; border-radius: 20px;
+            border: 2px solid rgba(255,255,255,0.2); text-align: center; color: white;
+            backdrop-filter: blur(10px); width: 90%; max-width: 400px;
+        }
+        .role-card {
+            display: inline-block; width: 100px; height: 100px; margin: 10px;
+            border-radius: 15px; border: 3px solid transparent; cursor: pointer;
+            transition: transform 0.2s; position: relative;
+        }
+        .role-card.selected { border-color: #00ff88; transform: scale(1.1); box-shadow: 0 0 20px #00ff88; }
+        .role-card img { width: 100%; height: 100%; border-radius: 12px; object-fit: cover; }
+        
+        input.room-input {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);
+            color: white; padding: 15px; font-size: 20px; text-align: center;
+            border-radius: 10px; width: 100%; margin-bottom: 20px; outline: none;
         }
         
-        .menu-box {
-            background: #34495e; padding: 40px; border-radius: 20px; border: 4px solid #f1c40f;
-            text-align: center; max-width: 90%; box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        
-        button {
-            background: #e67e22; color: white; border: none; padding: 15px 30px;
-            font-size: 18px; border-radius: 50px; cursor: pointer; margin: 10px;
-            font-weight: bold; transition: transform 0.1s;
-        }
-        button:active { transform: scale(0.95); }
-        button.secondary { background: #16a085; }
-        
-        input { padding: 15px; border-radius: 10px; border: none; width: 200px; text-align: center; font-size: 18px; }
-
-        /* 游戏界面 UI */
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
-        
-        /* 聊天框 */
-        #chat-container {
-            position: absolute; bottom: 80px; left: 20px; width: 300px; height: 150px;
-            pointer-events: auto; display: flex; flex-direction: column;
-        }
-        #chat-history {
-            flex: 1; background: rgba(0,0,0,0.5); color: white; overflow-y: auto;
-            padding: 10px; border-radius: 10px 10px 0 0; font-size: 14px;
-        }
-        #chat-input-area { display: flex; }
-        #chat-input { flex: 1; padding: 10px; border: none; border-radius: 0 0 0 10px; }
-        #chat-send { width: 60px; border: none; background: #2ecc71; color: white; cursor: pointer; border-radius: 0 0 10px 0; }
-
-        /* 状态栏 */
-        .hud-bar {
-            position: absolute; top: 20px; left: 20px;
-            background: rgba(255,255,255,0.9); padding: 10px 20px;
-            border-radius: 30px; font-weight: bold; color: #333;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            display: flex; gap: 20px;
+        button.start-btn {
+            background: linear-gradient(45deg, #00c6ff, #0072ff); border: none;
+            color: white; padding: 15px 40px; font-size: 20px; border-radius: 30px;
+            font-weight: bold; cursor: pointer; box-shadow: 0 5px 15px rgba(0,114,255,0.4);
+            width: 100%; margin-top: 10px;
         }
 
-        /* 存档提示 */
-        #save-notify {
-            position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
-            background: #27ae60; color: white; padding: 10px 20px; border-radius: 20px;
-            opacity: 0; transition: opacity 0.5s;
+        /* 游戏内 HUD */
+        .hud-top {
+            position: absolute; top: 0; left: 0; width: 100%; padding: 10px;
+            display: flex; justify-content: space-between; font-weight: bold;
+            color: white; text-shadow: 0 2px 4px black; font-size: 14px;
+        }
+        .bar-container { width: 100px; height: 10px; background: #333; border-radius: 5px; overflow: hidden; margin-top: 5px; }
+        .hp-bar { height: 100%; background: #ff4757; width: 100%; transition: width 0.2s; }
+        .exp-bar { height: 100%; background: #eccc68; width: 0%; transition: width 0.2s; }
+
+        /* 虚拟摇杆与按钮 */
+        #controls-area { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* 技能按钮组 */
+        .skill-btn {
+            position: absolute; width: 70px; height: 70px; border-radius: 50%;
+            background: rgba(0,0,0,0.5); border: 2px solid white; pointer-events: auto;
+            display: flex; justify-content: center; align-items: center; color: white;
+            font-weight: bold; font-size: 14px; touch-action: manipulation;
+        }
+        .skill-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.3); }
+        .cooldown-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: 50%; background: rgba(0,0,0,0.7);
+            display: flex; justify-content: center; align-items: center; font-size: 20px;
+        }
+
+        #atk-btn { bottom: 40px; right: 40px; width: 80px; height: 80px; background: rgba(255, 50, 50, 0.4); border-color: #ff6b81; }
+        #ult-btn { bottom: 140px; right: 50px; background: rgba(50, 150, 255, 0.4); border-color: #70a1ff; }
+
+        /* 提示信息 */
+        #msg-toast {
+            position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: #00ff88; padding: 10px 20px;
+            border-radius: 20px; opacity: 0; transition: opacity 0.5s; text-align: center;
         }
     </style>
 </head>
@@ -70,427 +91,718 @@
 
 <canvas id="gameCanvas"></canvas>
 
-<div id="save-notify">💾 进度已保存！</div>
-
-<div id="menu-layer">
-    <div class="menu-box" id="step-role">
-        <h1 style="color:#f1c40f;">🐱 喵屋大冒险 🐶</h1>
-        <p>请选择你的身份：</p>
-        <button onclick="selectRole('A')">我是 李晓晗 (幺幺/黄猫)</button>
-        <br>
-        <button class="secondary" onclick="selectRole('B')">我是 王子路 (石榴/白猫)</button>
-    </div>
-
-    <div class="menu-box" id="step-conn" style="display:none;">
-        <h2 id="role-title"></h2>
-        <div id="host-panel" style="display:none;">
-            <p>房主 ID (发给对方):</p>
-            <h1 id="my-id" style="color:#f1c40f; letter-spacing: 3px;">...</h1>
-            <p class="loading">等待伴侣连接...</p>
+<div id="login-screen">
+    <div class="login-box">
+        <h2>⚔️ 喵界荣耀</h2>
+        <p style="color:#aaa; font-size:12px;">无需注册，输入相同房间号即可自动匹配</p>
+        
+        <input type="number" id="room-input" class="room-input" value="888" placeholder="房间号 (如: 888)">
+        
+        <div style="margin: 20px 0;">
+            <p>选择英雄</p>
+            <div class="role-card selected" id="role-a" onclick="selectRole('A')">
+                <div style="background:#ffd700; height:100%; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:40px;">🐱</div>
+                <div style="position:absolute; bottom:5px; width:100%; text-align:center; font-size:12px; color:black; font-weight:bold;">幺幺(法师)</div>
+            </div>
+            <div class="role-card" id="role-b" onclick="selectRole('B')">
+                <div style="background:#f1f2f6; height:100%; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:40px;">😼</div>
+                <div style="position:absolute; bottom:5px; width:100%; text-align:center; font-size:12px; color:black; font-weight:bold;">石榴(战士)</div>
+            </div>
         </div>
-        <div id="join-panel" style="display:none;">
-            <p>输入对方的 ID:</p>
-            <input type="text" id="target-id" placeholder="例如: X7Z2">
-            <br><br>
-            <button onclick="connectToPartner()">连接并开始</button>
-        </div>
-        <br>
-        <button onclick="loadGameLocal()" style="font-size:14px; background:#7f8c8d;">读取本地存档</button>
+
+        <button class="start-btn" id="connect-btn" onclick="tryConnect()">开始匹配</button>
+        <p id="status-text" style="margin-top:10px; color:#ffeb3b; min-height:20px;"></p>
     </div>
 </div>
 
-<div id="ui-layer">
-    <div class="hud-bar">
-        <span>💛 幺幺: <span id="hp-a">100</span>%</span>
-        <span>🤍 石榴: <span id="hp-b">100</span>%</span>
-        <span>🔑 钥匙: <span id="key-count">0</span>/3</span>
-        <span>🚩 关卡: <span id="level-num">1</span></span>
+<div id="ui-layer" style="display:none;">
+    <div class="hud-top">
+        <div style="margin-left:10px;">
+            <div id="p1-name">我</div>
+            <div class="bar-container"><div class="hp-bar" id="hud-hp-me"></div></div>
+            <div style="font-size:10px; color:#eccc68;">Lv.<span id="hud-lv-me">1</span></div>
+        </div>
+        <div style="text-align:center;">
+            <div>🛡️ 基地水晶</div>
+            <div class="bar-container" style="width:150px;"><div class="hp-bar" id="hud-hp-base" style="background:#00a8ff;"></div></div>
+            <div style="font-size:12px; margin-top:5px;">波次: <span id="wave-num">1</span></div>
+        </div>
+        <div style="margin-right:10px; text-align:right;">
+            <div id="p2-name">队友</div>
+            <div class="bar-container"><div class="hp-bar" id="hud-hp-mate"></div></div>
+            <div style="font-size:10px; color:#aaa;">(离线)</div>
+        </div>
     </div>
 
-    <div style="position:absolute; right:20px; top:20px;">
-        <button style="padding:10px; font-size:14px; background:#9b59b6;" onclick="saveGame()">💾 保存</button>
-    </div>
+    <div id="msg-toast">欢迎来到喵界峡谷！</div>
 
-    <div id="chat-container">
-        <div id="chat-history"></div>
-        <div id="chat-input-area">
-            <input id="chat-input" placeholder="按回车发送..." onkeypress="if(event.keyCode===13) sendChat()">
-            <button id="chat-send" onclick="sendChat()">发送</button>
+    <div id="controls-area">
+        <div id="atk-btn" class="skill-btn">普攻</div>
+        
+        <div id="ult-btn" class="skill-btn">
+            大招
+            <div class="cooldown-overlay" id="cd-overlay" style="display:none;">0</div>
         </div>
     </div>
 </div>
 
 <script>
-// --- 全局变量与配置 ---
-const CFG = {
-    roles: {
-        'A': { name: '李晓晗', pet: '幺幺', color: '#f1c40f', skin: '🐱' }, // 黄猫
-        'B': { name: '王子路', pet: '石榴', color: '#ecf0f1', skin: '😺' }  // 白猫
+// ==========================================
+// 1. 核心网络引擎 (自动匹配逻辑)
+// ==========================================
+const Net = {
+    peer: null,
+    conn: null,
+    isHost: false,
+    myId: '',
+    roomId: '',
+    
+    init: function(roomId, onConnected) {
+        this.roomId = "MEOW_MOBA_ROOM_" + roomId;
+        // 尝试作为 HOST 初始化 (ID = 房间号_HOST)
+        const hostId = this.roomId + "_HOST";
+        
+        document.getElementById('status-text').innerText = "正在寻找队友...";
+        
+        // 逻辑：先尝试连接 Host，连不上则自己成为 Host
+        const tempPeer = new Peer();
+        
+        tempPeer.on('open', (id) => {
+            // 尝试连接指定的 HOST ID
+            const conn = tempPeer.connect(hostId);
+            
+            conn.on('open', () => {
+                // 连接成功 -> 我是客户端 (Client)
+                console.log("找到房主，我是客户端");
+                this.peer = tempPeer;
+                this.conn = conn;
+                this.isHost = false;
+                this.setupConnection(onConnected);
+            });
+            
+            // 如果连接失败（几秒后），说明没有Host，我自己当Host
+            setTimeout(() => {
+                if (!this.conn || !this.conn.open) {
+                    console.log("未找到房主，我创建房间");
+                    tempPeer.destroy(); // 销毁临时ID
+                    this.createHost(hostId, onConnected);
+                }
+            }, 2000);
+        });
+        
+        tempPeer.on('error', (err) => {
+            // 错误通常意味着 Host 不存在或网络问题，尝试成为 Host
+            console.log("连接错误，尝试成为Host");
+            this.createHost(hostId, onConnected);
+        });
+    },
+
+    createHost: function(hostId, onConnected) {
+        this.peer = new Peer(hostId); // 强制占用 HOST ID
+        this.isHost = true;
+        
+        this.peer.on('open', () => {
+            document.getElementById('status-text').innerText = "已建立房间，等待队友...";
+        });
+
+        this.peer.on('connection', (c) => {
+            console.log("队友已连接！");
+            this.conn = c;
+            this.setupConnection(onConnected);
+        });
+        
+        this.peer.on('error', (err) => {
+            if(err.type === 'unavailable-id') {
+                // 极罕见情况：两个人同时抢 Host
+                alert("房间拥挤，请换个号码！");
+                location.reload();
+            }
+        });
+    },
+
+    setupConnection: function(callback) {
+        document.getElementById('status-text').innerText = "连接成功！进入游戏...";
+        setTimeout(() => {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'block';
+            callback();
+        }, 1000);
+
+        this.conn.on('data', (data) => Game.onNetworkData(data));
+        this.conn.on('close', () => Game.showToast("队友断开连接"));
+    },
+
+    send: function(data) {
+        if (this.conn && this.conn.open) {
+            this.conn.send(data);
+        }
     }
 };
 
-let myRole = 'A'; // 默认
-let peer = null, conn = null;
-let gameRunning = false;
-let currentLevel = 1;
+// ==========================================
+// 2. 游戏数据与逻辑
+// ==========================================
+const CONFIG = {
+    A: { name: '幺幺', color: '#ffd700', hp: 800, speed: 5, type: 'mage', skillCd: 300 },
+    B: { name: '石榴', color: '#f1f2f6', hp: 1200, speed: 4.5, type: 'tank', skillCd: 500 }
+};
 
-// 游戏实体
-const player = { x: 300, y: 300, hp: 100, role: 'A' };
-const partner = { x: 300, y: 300, hp: 100, role: 'B', active: false };
-const keys = []; // 关卡中的钥匙
-const ghosts = []; // 敌人
-const exitDoor = { x: 0, y: 0, open: false };
-let collectedKeys = 0;
+let myRole = 'A'; 
 
-// --- 1. 菜单与连接逻辑 ---
-
-function selectRole(role) {
-    myRole = role;
-    player.role = role;
-    partner.role = (role === 'A') ? 'B' : 'A'; // 对方是另一个
+// 摇杆逻辑
+const Joystick = {
+    active: false,
+    origin: {x:0, y:0},
+    current: {x:0, y:0},
+    vector: {x:0, y:0}, // 归一化向量
+    id: null,
     
-    document.getElementById('step-role').style.display = 'none';
-    document.getElementById('step-conn').style.display = 'block';
-    
-    const info = CFG.roles[role];
-    document.getElementById('role-title').innerText = `你好，${info.name} (${info.pet})`;
-    
-    // 初始化 Peer
-    initPeer();
-}
-
-function initPeer() {
-    // 如果是 A (幺幺)，默认作为房主；如果是 B (石榴)，默认作为加入者
-    // 为了简化，我们还是让用户手动输入 ID，这样更稳定
-    const isHost = (myRole === 'A'); 
-    
-    if(isHost) {
-        document.getElementById('host-panel').style.display = 'block';
-        const id = Math.random().toString(36).substring(2, 6).toUpperCase();
-        peer = new Peer(id);
-        peer.on('open', (id) => { document.getElementById('my-id').innerText = id; });
-        peer.on('connection', (c) => {
-            conn = c;
-            setupConnection();
+    init: function() {
+        const zone = document.getElementById('ui-layer');
+        zone.addEventListener('touchstart', e => {
+            for(let i=0; i<e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if(t.clientX < window.innerWidth / 2) { // 左半屏
+                    this.start(t.identifier, t.clientX, t.clientY);
+                }
+            }
         });
-    } else {
-        document.getElementById('join-panel').style.display = 'block';
-        peer = new Peer(); // 自动ID
-    }
-}
-
-function connectToPartner() {
-    const target = document.getElementById('target-id').value.toUpperCase();
-    if(!target) return alert("请输入ID");
-    conn = peer.connect(target);
-    setupConnection();
-}
-
-function setupConnection() {
-    conn.on('open', () => {
-        console.log("连接建立！");
-        startGame();
-        // 发送一次问候
-        conn.send({ type: 'chat', name: '系统', msg: '伴侣已连接！一起去冒险吧！' });
-    });
-    conn.on('data', handleData);
-    conn.on('close', () => alert("连接断开"));
-}
-
-function handleData(data) {
-    if (data.type === 'move') {
-        partner.x = data.x;
-        partner.y = data.y;
-        partner.hp = data.hp;
-        partner.active = true;
-    } else if (data.type === 'chat') {
-        addMessage(data.name, data.msg, false);
-    } else if (data.type === 'syncLevel') {
-        // 同步关卡进度
-        if(data.level > currentLevel) loadLevel(data.level);
-    }
-}
-
-// --- 2. 游戏核心逻辑 ---
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-let W, H;
-
-function resize() { W = window.innerWidth; H = window.innerHeight; canvas.width = W; canvas.height = H; }
-window.addEventListener('resize', resize);
-resize();
-
-// 输入控制
-const keysPressed = {};
-window.addEventListener('keydown', e => keysPressed[e.key] = true);
-window.addEventListener('keyup', e => keysPressed[e.key] = false);
-
-// 触摸控制 (简单的点击移动)
-let touchTarget = null;
-window.addEventListener('touchstart', e => {
-    touchTarget = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-});
-window.addEventListener('touchend', () => touchTarget = null);
-
-function startGame() {
-    document.getElementById('menu-layer').style.display = 'none';
-    document.getElementById('ui-layer').style.display = 'block';
-    gameRunning = true;
-    loadLevel(currentLevel);
-    loop();
-}
-
-function loadLevel(lv) {
-    currentLevel = lv;
-    document.getElementById('level-num').innerText = lv;
-    collectedKeys = 0;
-    
-    // 生成地图 (简单的随机生成)
-    keys.length = 0;
-    ghosts.length = 0;
-    
-    // 3把钥匙
-    for(let i=0; i<3; i++) {
-        keys.push({ x: Math.random() * (W-100) + 50, y: Math.random() * (H-100) + 50, collected: false });
-    }
-    
-    // 幽灵 (随关卡增加)
-    for(let i=0; i< lv + 1; i++) {
-        ghosts.push({ 
-            x: Math.random() * W, y: Math.random() * H, 
-            vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3 
+        zone.addEventListener('touchmove', e => {
+            for(let i=0; i<e.changedTouches.length; i++) {
+                if(e.changedTouches[i].identifier === this.id) {
+                    this.move(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+                }
+            }
         });
-    }
-
-    // 出口
-    exitDoor.x = W - 100;
-    exitDoor.y = H - 100;
-    
-    // 重置位置
-    player.x = 100; player.y = 100;
-    
-    addMessage("系统", `第 ${lv} 关开始！收集 3 把钥匙打开大门！`, true);
-}
-
-function update() {
-    // 1. 玩家移动
-    const speed = 4;
-    if (keysPressed['w']) player.y -= speed;
-    if (keysPressed['s']) player.y += speed;
-    if (keysPressed['a']) player.x -= speed;
-    if (keysPressed['d']) player.x += speed;
-    
-    if(touchTarget) {
-        const dx = touchTarget.x - player.x;
-        const dy = touchTarget.y - player.y;
+        zone.addEventListener('touchend', e => {
+            for(let i=0; i<e.changedTouches.length; i++) {
+                if(e.changedTouches[i].identifier === this.id) this.end();
+            }
+        });
+    },
+    start: function(id, x, y) { this.active=true; this.id=id; this.origin={x,y}; this.current={x,y}; this.vector={x:0,y:0}; },
+    move: function(x, y) {
+        this.current = {x, y};
+        const dx = x - this.origin.x;
+        const dy = y - this.origin.y;
         const dist = Math.sqrt(dx*dx + dy*dy);
-        if(dist > 5) {
-            player.x += (dx/dist) * speed;
-            player.y += (dy/dist) * speed;
-        }
-    }
-
-    // 边界检查
-    if(player.x < 0) player.x = 0; if(player.x > W) player.x = W;
-    if(player.y < 0) player.y = 0; if(player.y > H) player.y = H;
-
-    // 2. 钥匙收集
-    keys.forEach(k => {
-        if(!k.collected && Math.hypot(player.x - k.x, player.y - k.y) < 30) {
-            k.collected = true;
-            collectedKeys++;
-            addMessage("系统", "你找到了一把钥匙！", true);
-            // 简单同步：如果我吃了，告诉对方 (这里简化为各自吃各自的逻辑，实际应该同步ID)
-        }
-    });
-
-    // 3. 幽灵逻辑 (简单的巡逻 + 碰撞)
-    ghosts.forEach(g => {
-        g.x += g.vx; g.y += g.vy;
-        if(g.x < 0 || g.x > W) g.vx *= -1;
-        if(g.y < 0 || g.y > H) g.vy *= -1;
+        const maxDist = 50;
         
-        // 碰撞检测
-        if(Math.hypot(player.x - g.x, player.y - g.y) < 30) {
-            player.hp -= 1;
-            // 震动效果
-            if(navigator.vibrate) navigator.vibrate(50);
+        if(dist > 0) {
+            const scale = Math.min(dist, maxDist);
+            this.vector = { x: (dx/dist), y: (dy/dist) };
+            // 限制摇杆视觉范围
+            this.current.x = this.origin.x + this.vector.x * scale;
+            this.current.y = this.origin.y + this.vector.y * scale;
         }
-    });
+    },
+    end: function() { this.active=false; this.id=null; this.vector={x:0,y:0}; }
+};
 
-    // 4. 通关判定
-    // 假设两人共享进度，这里简化为本地判定：如果钥匙够了，走到门
-    // 在真实多人里，应该同步 keys 状态。这里为了演示，只要我在本地吃到3个就算开门。
-    if(collectedKeys >= 3) {
-        exitDoor.open = true;
-        if(Math.hypot(player.x - exitDoor.x, player.y - exitDoor.y) < 50) {
-            currentLevel++;
-            loadLevel(currentLevel);
-            // 通知对方进入下一关
-            if(conn && conn.open) conn.send({ type: 'syncLevel', level: currentLevel });
+// 技能按钮绑定
+document.getElementById('atk-btn').addEventListener('touchstart', (e) => { e.preventDefault(); Game.myAction('atk'); });
+document.getElementById('ult-btn').addEventListener('touchstart', (e) => { e.preventDefault(); Game.myAction('ult'); });
+
+// ==========================================
+// 3. 游戏主引擎
+// ==========================================
+const Game = {
+    canvas: document.getElementById('gameCanvas'),
+    ctx: document.getElementById('gameCanvas').getContext('2d'),
+    
+    width: 0, height: 0,
+    camera: {x:0, y:0},
+    
+    // 实体
+    me: { x:0, y:0, hp:100, maxHp:100, lv:1, exp:0, cd:0, role:'A', action:null, shield:0 },
+    mate: { x:0, y:0, hp:100, maxHp:100, active:false, role:'B', action:null, shield:0 },
+    base: { x:0, y:0, hp:5000, maxHp:5000 },
+    
+    enemies: [],
+    particles: [],
+    projectiles: [],
+    texts: [],
+    
+    frameCount: 0,
+    wave: 1,
+    
+    init: function() {
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        Joystick.init();
+        
+        // 初始化位置
+        this.base.x = 0; this.base.y = 0; // 基地在地图中心 (0,0)
+        this.me.x = 100; this.me.y = 100;
+        
+        const roleData = CONFIG[myRole];
+        this.me.hp = this.me.maxHp = roleData.hp;
+        this.me.role = myRole;
+        
+        // 启动循环
+        requestAnimationFrame(() => this.loop());
+        
+        // 只有房主负责生成怪物
+        if(Net.isHost) setInterval(() => this.spawnWave(), 5000);
+    },
+    
+    resize: function() {
+        this.width = this.canvas.width = window.innerWidth;
+        this.height = this.canvas.height = window.innerHeight;
+    },
+    
+    myAction: function(type) {
+        if(this.me.hp <= 0) return;
+        
+        if(type === 'ult') {
+            if(this.me.cd > 0) {
+                this.showToast("技能冷却中!");
+                return;
+            }
+            this.me.cd = CONFIG[this.me.role].skillCd;
+            this.performSkill(this.me, true); // true = isUlt
+        } else {
+            // 普攻
+            this.performSkill(this.me, false);
         }
-    }
-
-    // 5. 数据同步发送
-    if (conn && conn.open) {
-        conn.send({
-            type: 'move',
-            x: player.x,
-            y: player.y,
-            hp: player.hp
+        
+        // 发送给队友
+        Net.send({ type: 'action', act: type, x: this.me.x, y: this.me.y });
+    },
+    
+    performSkill: function(entity, isUlt) {
+        const role = entity.role;
+        const isMe = entity === this.me;
+        
+        if(role === 'A') { // 幺幺 (法师)
+            if(isUlt) {
+                // 大招：全屏治疗 + 大范围伤害
+                this.addParticle(entity.x, entity.y, '#ffd700', 100, 'shockwave');
+                this.shakeScreen(10);
+                if(isMe) this.damageArea(entity.x, entity.y, 300, 500); // 伤害
+                // 治疗
+                entity.hp = Math.min(entity.hp + 200, entity.maxHp);
+                if(this.mate.active) this.mate.hp = Math.min(this.mate.hp + 200, this.mate.maxHp);
+            } else {
+                // 普攻：火球
+                // 寻找最近敌人
+                let target = this.findNearestEnemy(entity);
+                let angle = 0;
+                if(target) angle = Math.atan2(target.y - entity.y, target.x - entity.x);
+                else angle = isMe ? Math.atan2(Joystick.vector.y, Joystick.vector.x) : 0;
+                
+                this.projectiles.push({
+                    x: entity.x, y: entity.y,
+                    vx: Math.cos(angle)*10, vy: Math.sin(angle)*10,
+                    life: 60, owner: entity, damage: 50
+                });
+            }
+        } else { // 石榴 (战士)
+            if(isUlt) {
+                // 大招：护盾 + 嘲讽
+                entity.shield = 300; // 护盾持续时间/值
+                this.addParticle(entity.x, entity.y, '#00a8ff', 80, 'ring');
+                if(isMe) this.showToast("雷霆护盾开启！");
+            } else {
+                // 普攻：近战挥砍
+                this.addParticle(entity.x, entity.y, '#fff', 20, 'slash');
+                if(isMe) this.damageArea(entity.x, entity.y, 80, 80);
+            }
+        }
+    },
+    
+    damageArea: function(x, y, range, dmg) {
+        this.enemies.forEach(e => {
+            if(Math.hypot(e.x - x, e.y - y) < range) {
+                e.hp -= dmg;
+                this.addFloatText(e.x, e.y, "-" + dmg, "red");
+                this.addParticle(e.x, e.y, "#ff0000", 10, "spark");
+            }
         });
+    },
+    
+    findNearestEnemy: function(origin) {
+        let nearest = null;
+        let minDst = 9999;
+        this.enemies.forEach(e => {
+            const d = Math.hypot(e.x - origin.x, e.y - origin.y);
+            if(d < minDst) { minDst = d; nearest = e; }
+        });
+        return nearest;
+    },
+    
+    spawnWave: function() {
+        if(!this.base.hp > 0) return;
+        this.wave++;
+        const count = 3 + Math.floor(this.wave / 2);
+        for(let i=0; i<count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 800 + Math.random() * 200;
+            this.enemies.push({
+                x: Math.cos(angle)*dist, y: Math.sin(angle)*dist,
+                hp: 100 + this.wave*20, maxHp: 100 + this.wave*20,
+                speed: 1 + Math.random(),
+                target: 'base'
+            });
+        }
+        
+        // 只要生成了，就同步给客户端
+        if(Net.isHost) {
+            Net.send({ type: 'syncEnemies', data: this.enemies });
+            Net.send({ type: 'waveInfo', wave: this.wave });
+        }
+    },
+
+    onNetworkData: function(data) {
+        if(data.type === 'move') {
+            this.mate.x = data.x;
+            this.mate.y = data.y;
+            this.mate.hp = data.hp;
+            this.mate.active = true;
+            this.mate.role = data.role;
+        } else if (data.type === 'action') {
+            // 队友放技能
+            this.mate.x = data.x; // 修正位置
+            this.mate.y = data.y;
+            this.performSkill(this.mate, data.act === 'ult');
+        } else if (data.type === 'syncEnemies' && !Net.isHost) {
+            // 客户端直接接收怪物列表
+            this.enemies = data.data;
+        } else if (data.type === 'waveInfo') {
+            this.wave = data.wave;
+            document.getElementById('wave-num').innerText = this.wave;
+        } else if (data.type === 'baseDmg') {
+            this.base.hp = data.hp;
+        }
+    },
+
+    update: function() {
+        this.frameCount++;
+        
+        // 1. 玩家移动
+        if(Joystick.active && this.me.hp > 0) {
+            const speed = CONFIG[this.me.role].speed;
+            this.me.x += Joystick.vector.x * speed;
+            this.me.y += Joystick.vector.y * speed;
+        }
+        
+        // 冷却
+        if(this.me.cd > 0) {
+            this.me.cd--;
+            const overlay = document.getElementById('cd-overlay');
+            overlay.style.display = 'flex';
+            overlay.innerText = Math.ceil(this.me.cd / 60);
+        } else {
+            document.getElementById('cd-overlay').style.display = 'none';
+        }
+        
+        if(this.me.shield > 0) this.me.shield--;
+
+        // 2. 摄像机跟随 (平滑)
+        this.camera.x += (this.me.x - this.width/2 - this.camera.x) * 0.1;
+        this.camera.y += (this.me.y - this.height/2 - this.camera.y) * 0.1;
+
+        // 3. 敌人逻辑 (Host 计算)
+        if(Net.isHost) {
+            let baseHit = false;
+            this.enemies.forEach(e => {
+                // 仇恨判断
+                const distMe = Math.hypot(e.x - this.me.x, e.y - this.me.y);
+                const distMate = this.mate.active ? Math.hypot(e.x - this.mate.x, e.y - this.mate.y) : 9999;
+                const distBase = Math.hypot(e.x - this.base.x, e.y - this.base.y);
+                
+                let targetPos = this.base;
+                if(distMe < 200) targetPos = this.me;
+                else if(distMate < 200) targetPos = this.mate;
+                
+                // 移动
+                const angle = Math.atan2(targetPos.y - e.y, targetPos.x - e.x);
+                e.x += Math.cos(angle) * e.speed;
+                e.y += Math.sin(angle) * e.speed;
+                
+                // 攻击判定
+                if(distMe < 30 && this.frameCount % 30 === 0) {
+                    if(this.me.shield <= 0) this.me.hp -= 10;
+                }
+                if(distBase < 50 && this.frameCount % 10 === 0) {
+                    this.base.hp -= 5;
+                    baseHit = true;
+                }
+            });
+            
+            // 清理死怪
+            const prevLen = this.enemies.length;
+            this.enemies = this.enemies.filter(e => e.hp > 0);
+            if(this.enemies.length < prevLen) {
+                // 只有Host加经验，这里简化为同步
+                Net.send({ type: 'syncEnemies', data: this.enemies });
+            }
+            if(baseHit) Net.send({ type: 'baseDmg', hp: this.base.hp });
+        }
+        
+        // 客户端也需要在本地模拟投射物，但不决定生死
+        this.projectiles.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.life--;
+            // 简单的碰撞视觉
+            if(Net.isHost) {
+                this.enemies.forEach(e => {
+                    if(Math.hypot(e.x - p.x, e.y - p.y) < 20) {
+                        e.hp -= p.damage;
+                        p.life = 0;
+                        Net.send({ type: 'syncEnemies', data: this.enemies }); // 立即同步击中状态
+                    }
+                });
+            }
+        });
+        this.projectiles = this.projectiles.filter(p => p.life > 0);
+        
+        // 粒子更新
+        this.particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.life--;
+            p.size *= 0.95;
+        });
+        this.particles = this.particles.filter(p => p.life > 0);
+        
+        // 文字更新
+        this.texts.forEach(t => { t.y--; t.life--; });
+        this.texts = this.texts.filter(t => t.life > 0);
+
+        // 网络同步自己的状态
+        if(this.frameCount % 5 === 0) { // 降低频率
+            Net.send({ type: 'move', x: this.me.x, y: this.me.y, hp: this.me.hp, role: this.me.role });
+        }
+        
+        // UI 更新
+        this.updateHUD();
+        
+        if(this.base.hp <= 0) {
+            alert("基地被摧毁！游戏结束！");
+            location.reload();
+        }
+    },
+    
+    draw: function() {
+        const cx = this.camera.x;
+        const cy = this.camera.y;
+        
+        // 1. 地面渲染 (草地 + 网格)
+        this.ctx.fillStyle = '#1e272e';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+        
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        this.ctx.beginPath();
+        const gridSize = 100;
+        const offsetX = -cx % gridSize;
+        const offsetY = -cy % gridSize;
+        for(let x=offsetX; x<this.width; x+=gridSize) { this.ctx.moveTo(x,0); this.ctx.lineTo(x,this.height); }
+        for(let y=offsetY; y<this.height; y+=gridSize) { this.ctx.moveTo(0,y); this.ctx.lineTo(this.width,y); }
+        this.ctx.stroke();
+        
+        // 2. 绘制基地水晶
+        this.drawEntity(this.base.x, this.base.y, 40, '#00d2d3', '💠');
+        // 水晶血条
+        this.ctx.fillStyle = 'red';
+        this.ctx.fillRect(this.base.x-cx-30, this.base.y-cy-60, 60, 5);
+        this.ctx.fillStyle = '#00d2d3';
+        this.ctx.fillRect(this.base.x-cx-30, this.base.y-cy-60, 60 * (this.base.hp/this.base.maxHp), 5);
+
+        // 3. 绘制敌人 (怪兽)
+        this.enemies.forEach(e => {
+            this.drawEntity(e.x, e.y, 15, '#ff4757', '👾');
+            // 血条
+            this.ctx.fillStyle = 'red';
+            this.ctx.fillRect(e.x-cx-15, e.y-cy-25, 30, 4);
+            this.ctx.fillStyle = '#2ed573';
+            this.ctx.fillRect(e.x-cx-15, e.y-cy-25, 30 * (e.hp/e.maxHp), 4);
+        });
+        
+        // 4. 绘制队友
+        if(this.mate.active) {
+            this.drawPlayer(this.mate);
+        }
+        
+        // 5. 绘制自己
+        this.drawPlayer(this.me);
+        
+        // 6. 投射物
+        this.ctx.fillStyle = '#ff9f43';
+        this.projectiles.forEach(p => {
+            this.ctx.beginPath();
+            this.ctx.arc(p.x-cx, p.y-cy, 5, 0, Math.PI*2);
+            this.ctx.fill();
+        });
+
+        // 7. 粒子特效 (高光)
+        this.ctx.globalCompositeOperation = 'lighter';
+        this.particles.forEach(p => {
+            this.ctx.fillStyle = p.color;
+            if(p.type === 'shockwave') {
+                this.ctx.beginPath();
+                this.ctx.strokeStyle = p.color;
+                this.ctx.lineWidth = 5;
+                this.ctx.arc(p.x-cx, p.y-cy, (100-p.life)*2, 0, Math.PI*2);
+                this.ctx.stroke();
+            } else if (p.type === 'ring') {
+                 this.ctx.beginPath();
+                this.ctx.strokeStyle = p.color;
+                this.ctx.lineWidth = 2;
+                this.ctx.arc(p.x-cx, p.y-cy, 50, 0, Math.PI*2);
+                this.ctx.stroke();
+            } else {
+                this.ctx.beginPath();
+                this.ctx.arc(p.x-cx, p.y-cy, p.size, 0, Math.PI*2);
+                this.ctx.fill();
+            }
+        });
+        this.ctx.globalCompositeOperation = 'source-over';
+        
+        // 8. 摇杆绘制
+        if(Joystick.active) {
+            this.ctx.beginPath();
+            this.ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            this.ctx.arc(Joystick.origin.x, Joystick.origin.y, 50, 0, Math.PI*2);
+            this.ctx.fill();
+            this.ctx.beginPath();
+            this.ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            this.ctx.arc(Joystick.current.x, Joystick.current.y, 20, 0, Math.PI*2);
+            this.ctx.fill();
+        }
+        
+        // 9. 浮动文字
+        this.ctx.font = "bold 16px Arial";
+        this.texts.forEach(t => {
+            this.ctx.fillStyle = t.color;
+            this.ctx.fillText(t.str, t.x-cx, t.y-cy);
+        });
+    },
+    
+    drawPlayer: function(p) {
+        const cx = this.camera.x;
+        const cy = this.camera.y;
+        const cfg = CONFIG[p.role];
+        
+        // 护盾光环
+        if(p.shield > 0) {
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = '#00a8ff';
+            this.ctx.lineWidth = 2;
+            this.ctx.arc(p.x-cx, p.y-cy, 25, 0, Math.PI*2);
+            this.ctx.stroke();
+        }
+        
+        // 本体
+        this.ctx.shadowBlur = 15;
+        this.ctx.shadowColor = cfg.color;
+        this.ctx.fillStyle = cfg.color;
+        this.ctx.beginPath();
+        this.ctx.arc(p.x-cx, p.y-cy, 20, 0, Math.PI*2);
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+        
+        // 名字
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(cfg.name, p.x-cx, p.y-cy-35);
+        
+        // 血条
+        this.ctx.fillStyle = 'black';
+        this.ctx.fillRect(p.x-cx-20, p.y-cy-30, 40, 6);
+        this.ctx.fillStyle = '#00ff88';
+        this.ctx.fillRect(p.x-cx-20, p.y-cy-30, 40 * (p.hp/p.maxHp), 6);
+    },
+    
+    drawEntity: function(x, y, r, c, emoji) {
+        const cx = this.camera.x;
+        const cy = this.camera.y;
+        this.ctx.fillStyle = c;
+        this.ctx.beginPath();
+        this.ctx.arc(x-cx, y-cy, r, 0, Math.PI*2);
+        this.ctx.fill();
+        if(emoji) {
+            this.ctx.font = (r*1.5) + "px Arial";
+            this.ctx.textAlign = "center";
+            this.ctx.textBaseline = "middle";
+            this.ctx.fillText(emoji, x-cx, y-cy);
+        }
+    },
+    
+    addParticle: function(x, y, color, life, type='spark') {
+        if(type === 'shockwave' || type === 'ring') {
+            this.particles.push({x, y, color, life, type, vx:0, vy:0, size:0});
+            return;
+        }
+        // 爆炸碎屑
+        for(let i=0; i<5; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 5;
+            this.particles.push({
+                x, y, color, life: life + Math.random()*20,
+                vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+                size: 2 + Math.random()*3, type
+            });
+        }
+    },
+    
+    addFloatText: function(x, y, str, color) {
+        this.texts.push({x, y, str, color, life: 60});
+    },
+    
+    updateHUD: function() {
+        document.getElementById('hud-hp-me').style.width = (this.me.hp / this.me.maxHp * 100) + "%";
+        document.getElementById('hud-hp-base').style.width = (this.base.hp / this.base.maxHp * 100) + "%";
+        if(this.mate.active) {
+            document.getElementById('hud-hp-mate').style.width = (this.mate.hp / this.mate.maxHp * 100) + "%";
+        }
+    },
+    
+    showToast: function(msg) {
+        const t = document.getElementById('msg-toast');
+        t.innerText = msg;
+        t.style.opacity = 1;
+        setTimeout(() => t.style.opacity = 0, 2000);
+    },
+    
+    shakeScreen: function(intensity) {
+        // 简易震屏：稍微偏移 Camera 几次
+        const originalX = this.camera.x;
+        const originalY = this.camera.y;
+        let shake = intensity;
+        const interval = setInterval(() => {
+            this.camera.x = originalX + (Math.random()-0.5)*shake;
+            this.camera.y = originalY + (Math.random()-0.5)*shake;
+            shake *= 0.9;
+            if(shake < 1) {
+                clearInterval(interval);
+            }
+        }, 16);
+    },
+
+    loop: function() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.loop());
     }
-    
-    // UI 更新
-    const myRoleData = CFG.roles[player.role];
-    const partnerRoleData = CFG.roles[partner.role];
-    
-    document.getElementById(myRole === 'A' ? 'hp-a' : 'hp-b').innerText = Math.floor(player.hp);
-    document.getElementById(partner.role === 'A' ? 'hp-a' : 'hp-b').innerText = partner.active ? Math.floor(partner.hp) : '离线';
-    document.getElementById('key-count').innerText = collectedKeys;
-    
-    if(player.hp <= 0) {
-        alert("你晕倒了... 幺幺/石榴 会把你救回起点的！");
-        player.hp = 100;
-        player.x = 100; player.y = 100;
-    }
+};
+
+// UI 交互
+function selectRole(r) {
+    myRole = r;
+    document.querySelectorAll('.role-card').forEach(el => el.classList.remove('selected'));
+    document.getElementById('role-' + r.toLowerCase()).classList.add('selected');
 }
 
-function draw() {
-    // 背景：深色地牢
-    ctx.fillStyle = '#2c3e50';
-    ctx.fillRect(0, 0, W, H);
+function tryConnect() {
+    const room = document.getElementById('room-input').value;
+    if(!room) return alert("请输入房间号！");
     
-    // 绘制网格地板
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-    ctx.beginPath();
-    for(let x=0; x<W; x+=40) { ctx.moveTo(x,0); ctx.lineTo(x,H); }
-    for(let y=0; y<H; y+=40) { ctx.moveTo(0,y); ctx.lineTo(W,y); }
-    ctx.stroke();
-
-    // 绘制大门
-    ctx.fillStyle = exitDoor.open ? '#2ecc71' : '#e74c3c';
-    ctx.fillRect(exitDoor.x - 30, exitDoor.y - 30, 60, 60);
-    ctx.fillStyle = '#fff';
-    ctx.font = '20px Arial';
-    ctx.fillText(exitDoor.open ? "入口" : "锁住", exitDoor.x-20, exitDoor.y);
-
-    // 绘制钥匙
-    ctx.font = '30px Arial';
-    keys.forEach(k => {
-        if(!k.collected) ctx.fillText('🔑', k.x-15, k.y+10);
+    document.getElementById('connect-btn').innerText = "连接中...";
+    document.getElementById('connect-btn').disabled = true;
+    
+    Net.init(room, () => {
+        Game.init();
     });
-
-    // 绘制幽灵 (惊险元素)
-    ctx.font = '30px Arial';
-    ghosts.forEach(g => {
-        ctx.fillText('👻', g.x-15, g.y+10);
-        // 幽灵光环
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(255,0,0,0.3)';
-        ctx.arc(g.x, g.y, 40, 0, Math.PI*2);
-        ctx.stroke();
-    });
-
-    // 绘制队友
-    if (partner.active) {
-        drawCat(partner.x, partner.y, partner.role, false);
-    }
-
-    // 绘制自己
-    drawCat(player.x, player.y, player.role, true);
 }
-
-function drawCat(x, y, role, isSelf) {
-    const info = CFG.roles[role];
-    
-    // 名字
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(info.name + (isSelf?"(我)":""), x, y - 35);
-    
-    // 宠物名字
-    ctx.fillStyle = info.color;
-    ctx.font = '10px Arial';
-    ctx.fillText(info.pet, x, y - 22);
-
-    // 猫咪本体 (用 Emoji 绘制，方便且高清)
-    ctx.font = '40px Arial';
-    // 幺幺(A)显示黄脸猫，石榴(B)显示白脸猫
-    ctx.fillText(info.skin, x, y + 10);
-    
-    // 血条
-    if(isSelf) {
-        ctx.fillStyle = '#c0392b';
-        ctx.fillRect(x - 20, y + 20, 40, 5);
-        ctx.fillStyle = '#2ecc71';
-        ctx.fillRect(x - 20, y + 20, 40 * (player.hp/100), 5);
-    }
-}
-
-function loop() {
-    if (!gameRunning) return;
-    update();
-    draw();
-    requestAnimationFrame(loop);
-}
-
-// --- 3. 聊天与存档系统 ---
-
-function sendChat() {
-    const input = document.getElementById('chat-input');
-    const msg = input.value;
-    if (!msg) return;
-    
-    const name = CFG.roles[player.role].name;
-    // 发给自己
-    addMessage(name, msg, true);
-    // 发给对方
-    if (conn && conn.open) {
-        conn.send({ type: 'chat', name: name, msg: msg });
-    }
-    input.value = '';
-}
-
-function addMessage(name, msg, isMe) {
-    const div = document.createElement('div');
-    div.style.marginBottom = '5px';
-    div.style.color = isMe ? '#f1c40f' : '#ecf0f1';
-    div.innerHTML = `<strong>${name}:</strong> ${msg}`;
-    
-    const history = document.getElementById('chat-history');
-    history.appendChild(div);
-    history.scrollTop = history.scrollHeight;
-}
-
-// 存档系统 (LocalStorage)
-function saveGame() {
-    const data = {
-        level: currentLevel,
-        role: player.role,
-        hp: player.hp
-    };
-    localStorage.setItem('cat_adventure_save', JSON.stringify(data));
-    
-    const notify = document.getElementById('save-notify');
-    notify.style.opacity = 1;
-    setTimeout(() => notify.style.opacity = 0, 2000);
-}
-
-function loadGameLocal() {
-    const json = localStorage.getItem('cat_adventure_save');
-    if(!json) return alert("还没有存档哦！");
-    
-    const data = JSON.parse(json);
-    currentLevel = data.level;
-    player.hp = data.hp;
-    // 角色通常由重新选择决定，这里仅读取进度
-    alert(`读取成功！即将进入第 ${data.level} 关`);
-    // 需要重新连接才能玩，所以只更新变量
-}
-
 </script>
 </body>
 </html>
