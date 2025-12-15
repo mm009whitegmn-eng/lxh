@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>星际拾荒：联机版</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0b0c10; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; }
+        canvas { display: block; }
+        
+        /* 联机菜单层 */
+        #menu-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 12, 16, 0.95); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        
+        .menu-box {
+            background: #1f2833; padding: 30px; border-radius: 15px; border: 2px solid #66fcf1;
+            text-align: center; color: white; max-width: 90%;
+        }
+        
+        input {
+            padding: 10px; border-radius: 5px; border: none; width: 80%;
+            margin: 10px 0; font-size: 16px; text-align: center;
+        }
+        
+        button {
+            background: #45a29e; color: white; border: none; padding: 12px 30px;
+            font-size: 18px; border-radius: 25px; cursor: pointer; margin: 5px;
+            transition: 0.2s;
+        }
+        button:active { transform: scale(0.95); background: #66fcf1; color: black; }
+        
+        #room-id-display { font-size: 24px; color: #66fcf1; font-weight: bold; margin: 10px 0; letter-spacing: 2px; }
+        .loading { color: #aaa; font-size: 12px; margin-top: 5px; }
+
+        /* 游戏UI */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+        .hud { position: absolute; padding: 10px; color: #66fcf1; font-weight: bold; text-shadow: 0 0 5px #45a29e; }
+        #stats { top: 10px; left: 10px; background: rgba(0,0,0,0.5); border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="menu-layer">
+    <div class="menu-box" id="step-1">
+        <h1 style="color:#66fcf1; margin-top:0;">🚀 星际联机</h1>
+        <p>选择模式</p>
+        <button onclick="createRoom()">我是房主 (创建)</button>
+        <button onclick="showJoin()">我是队友 (加入)</button>
+    </div>
+
+    <div class="menu-box" id="step-create" style="display:none;">
+        <p>把这个 ID 发给朋友：</p>
+        <div id="room-id-display">生成中...</div>
+        <p class="loading">等待队友连接...</p>
+        <button onclick="location.reload()" style="background:#444; font-size:14px;">取消</button>
+    </div>
+
+    <div class="menu-box" id="step-join" style="display:none;">
+        <p>输入房主的 ID：</p>
+        <input type="text" id="join-input" placeholder="输入 ID (例如: x9z2)">
+        <button onclick="joinRoom()">连接</button>
+        <br>
+        <button onclick="location.reload()" style="background:#444; font-size:14px;">返回</button>
+    </div>
+</div>
+
+<div id="ui-layer">
+    <div id="stats" class="hud">
+        <div>我: <span id="my-hp">100</span> HP</div>
+        <div style="color: #f50057">队友: <span id="p2-hp">???</span> HP</div>
+    </div>
+    <div style="position:absolute; bottom:20px; width:100%; text-align:center; color:rgba(255,255,255,0.5); font-size:12px;">
+        触摸/WASD 移动
+    </div>
+</div>
+
+<script>
+// --- 联机核心逻辑 (WebRTC) ---
+let peer = null;
+let conn = null;
+let myId = null;
+let isHost = false;
+let gameStarted = false;
+
+// 随机生成短 ID
+function generateShortId() {
+    return Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
+function initPeer(id) {
+    // 使用公共服务器 (注意：PeerJS官方服务器有时候会不稳定，但这不需要你自己架设服务器)
+    peer = new Peer(id, { debug: 1 });
+    
+    peer.on('open', (id) => {
+        myId = id;
+        if(isHost) {
+            document.getElementById('room-id-display').innerText = id;
+        }
+    });
+
+    peer.on('connection', (c) => {
+        // 作为房主，被别人连了
+        if(isHost) {
+            conn = c;
+            setupConnection();
+        }
+    });
+    
+    peer.on('error', (err) => {
+        alert("连接错误: " + err.type);
+    });
+}
+
+function createRoom() {
+    isHost = true;
+    document.getElementById('step-1').style.display = 'none';
+    document.getElementById('step-create').style.display = 'block';
+    initPeer(generateShortId());
+}
+
+function showJoin() {
+    document.getElementById('step-1').style.display = 'none';
+    document.getElementById('step-join').style.display = 'block';
+}
+
+function joinRoom() {
+    const destId = document.getElementById('join-input').value.toUpperCase();
+    if(!destId) return alert("请输入ID");
+    
+    // 作为加入者，初始化Peer不带ID（自动生成），然后连房主
+    peer = new Peer();
+    peer.on('open', () => {
+        conn = peer.connect(destId);
+        setupConnection();
+    });
+    peer.on('error', (err) => alert("找不到房间或连接失败"));
+}
+
+function setupConnection() {
+    conn.on('open', () => {
+        console.log("连接成功！");
+        startGame(); // 开始游戏
+    });
+
+    conn.on('data', (data) => {
+        // 收到对方的数据
+        handleNetworkData(data);
+    });
+    
+    conn.on('close', () => alert("对方断开了连接"));
+}
+
+// --- 数据同步 ---
+function handleNetworkData(data) {
+    if(data.type === 'move') {
+        otherPlayer.x = data.x;
+        otherPlayer.y = data.y;
+        otherPlayer.hp = data.hp;
+        otherPlayer.active = true;
+    }
+}
+
+function sendMyData() {
+    if(conn && conn.open) {
+        conn.send({
+            type: 'move',
+            x: player.x,
+            y: player.y,
+            hp: player.hp
+        });
+    }
+}
+
+// --- 游戏引擎 ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let SCREEN_W = window.innerWidth;
+let SCREEN_H = window.innerHeight;
+canvas.width = SCREEN_W;
+canvas.height = SCREEN_H;
+
+// 输入
+const Input = { keys: {}, touch: { active: false, x: 0, y: 0, ox: 0, oy: 0 } };
+window.addEventListener('keydown', e => Input.keys[e.key] = true);
+window.addEventListener('keyup', e => Input.keys[e.key] = false);
+window.addEventListener('touchstart', e => { 
+    Input.touch.active = true; 
+    Input.touch.ox = e.touches[0].clientX; Input.touch.oy = e.touches[0].clientY;
+    Input.touch.x = Input.touch.ox; Input.touch.y = Input.touch.oy;
+});
+window.addEventListener('touchmove', e => {
+    if(Input.touch.active) { Input.touch.x = e.touches[0].clientX; Input.touch.y = e.touches[0].clientY; }
+});
+window.addEventListener('touchend', () => Input.touch.active = false);
+
+// 实体
+const player = { x: SCREEN_W/2, y: SCREEN_H/2, size: 15, color: '#66fcf1', hp: 100 };
+const otherPlayer = { x: 0, y: 0, size: 15, color: '#f50057', hp: 100, active: false };
+const camera = { x: 0, y: 0 };
+const mapSize = 2000;
+
+// 简单的背景装饰
+const stars = [];
+for(let i=0; i<100; i++) stars.push({x: Math.random()*mapSize, y: Math.random()*mapSize, r: Math.random()*2});
+
+function startGame() {
+    document.getElementById('menu-layer').style.display = 'none';
+    document.getElementById('ui-layer').style.display = 'block';
+    gameStarted = true;
+    loop();
+}
+
+function update() {
+    // 移动逻辑
+    let dx = 0, dy = 0;
+    if(Input.keys['w']) dy = -1;
+    if(Input.keys['s']) dy = 1;
+    if(Input.keys['a']) dx = -1;
+    if(Input.keys['d']) dx = 1;
+    
+    if(Input.touch.active) {
+        dx = Input.touch.x - Input.touch.ox;
+        dy = Input.touch.y - Input.touch.oy;
+        const len = Math.sqrt(dx*dx + dy*dy);
+        if(len > 0) { dx/=len; dy/=len; }
+    }
+
+    player.x += dx * 4;
+    player.y += dy * 4;
+
+    // 摄像机跟随
+    camera.x = player.x - SCREEN_W/2;
+    camera.y = player.y - SCREEN_H/2;
+
+    // 网络同步频率 (每帧发送可能太快，实际可以优化，这里简单处理)
+    sendMyData();
+    
+    // UI更新
+    document.getElementById('my-hp').innerText = Math.floor(player.hp);
+    document.getElementById('p2-hp').innerText = otherPlayer.active ? Math.floor(otherPlayer.hp) : "离线";
+}
+
+function draw() {
+    // 背景
+    ctx.fillStyle = '#0b0c10';
+    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    
+    // 绘制星星
+    ctx.fillStyle = '#fff';
+    stars.forEach(s => {
+        if(s.x > camera.x && s.x < camera.x + SCREEN_W && s.y > camera.y && s.y < camera.y + SCREEN_H) {
+            ctx.beginPath(); ctx.arc(s.x - camera.x, s.y - camera.y, s.r, 0, Math.PI*2); ctx.fill();
+        }
+    });
+    
+    // 绘制网格
+    ctx.strokeStyle = '#1f2833';
+    ctx.beginPath();
+    for(let x = -camera.x % 50; x < SCREEN_W; x+=50) { ctx.moveTo(x, 0); ctx.lineTo(x, SCREEN_H); }
+    for(let y = -camera.y % 50; y < SCREEN_H; y+=50) { ctx.moveTo(0, y); ctx.lineTo(SCREEN_W, y); }
+    ctx.stroke();
+
+    // 绘制队友
+    if(otherPlayer.active) {
+        ctx.fillStyle = otherPlayer.color;
+        ctx.beginPath(); ctx.arc(otherPlayer.x - camera.x, otherPlayer.y - camera.y, otherPlayer.size, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'white'; ctx.font = "12px Arial"; ctx.fillText("队友", otherPlayer.x - camera.x - 10, otherPlayer.y - camera.y - 20);
+    }
+
+    // 绘制自己
+    ctx.fillStyle = player.color;
+    ctx.beginPath(); ctx.arc(player.x - camera.x, player.y - camera.y, player.size, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#66fcf1'; ctx.font = "12px Arial"; ctx.fillText("我", player.x - camera.x - 5, player.y - camera.y - 20);
+}
+
+function loop() {
+    if(!gameStarted) return;
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', () => { SCREEN_W = window.innerWidth; SCREEN_H = window.innerHeight; canvas.width = SCREEN_W; canvas.height = SCREEN_H; });
+
+</script>
+</body>
+</html>
