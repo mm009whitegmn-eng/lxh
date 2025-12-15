@@ -3,171 +3,337 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>星际拾荒：联机版</title>
+    <title>喵屋大冒险：幺幺与石榴</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #0b0c10; font-family: 'Segoe UI', sans-serif; touch-action: none; user-select: none; }
+        /* --- 整体风格：神秘遗迹 --- */
+        body { margin: 0; overflow: hidden; background-color: #2c3e50; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; touch-action: none; user-select: none; }
         canvas { display: block; }
         
-        /* 联机菜单层 */
+        /* 菜单层 */
         #menu-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(11, 12, 16, 0.95); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 100;
+            background: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 200;
+            color: white;
         }
         
         .menu-box {
-            background: #1f2833; padding: 30px; border-radius: 15px; border: 2px solid #66fcf1;
-            text-align: center; color: white; max-width: 90%;
-        }
-        
-        input {
-            padding: 10px; border-radius: 5px; border: none; width: 80%;
-            margin: 10px 0; font-size: 16px; text-align: center;
+            background: #34495e; padding: 40px; border-radius: 20px; border: 4px solid #f1c40f;
+            text-align: center; max-width: 90%; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         
         button {
-            background: #45a29e; color: white; border: none; padding: 12px 30px;
-            font-size: 18px; border-radius: 25px; cursor: pointer; margin: 5px;
-            transition: 0.2s;
+            background: #e67e22; color: white; border: none; padding: 15px 30px;
+            font-size: 18px; border-radius: 50px; cursor: pointer; margin: 10px;
+            font-weight: bold; transition: transform 0.1s;
         }
-        button:active { transform: scale(0.95); background: #66fcf1; color: black; }
+        button:active { transform: scale(0.95); }
+        button.secondary { background: #16a085; }
         
-        #room-id-display { font-size: 24px; color: #66fcf1; font-weight: bold; margin: 10px 0; letter-spacing: 2px; }
-        .loading { color: #aaa; font-size: 12px; margin-top: 5px; }
+        input { padding: 15px; border-radius: 10px; border: none; width: 200px; text-align: center; font-size: 18px; }
 
-        /* 游戏UI */
+        /* 游戏界面 UI */
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
-        .hud { position: absolute; padding: 10px; color: #66fcf1; font-weight: bold; text-shadow: 0 0 5px #45a29e; }
-        #stats { top: 10px; left: 10px; background: rgba(0,0,0,0.5); border-radius: 8px; }
+        
+        /* 聊天框 */
+        #chat-container {
+            position: absolute; bottom: 80px; left: 20px; width: 300px; height: 150px;
+            pointer-events: auto; display: flex; flex-direction: column;
+        }
+        #chat-history {
+            flex: 1; background: rgba(0,0,0,0.5); color: white; overflow-y: auto;
+            padding: 10px; border-radius: 10px 10px 0 0; font-size: 14px;
+        }
+        #chat-input-area { display: flex; }
+        #chat-input { flex: 1; padding: 10px; border: none; border-radius: 0 0 0 10px; }
+        #chat-send { width: 60px; border: none; background: #2ecc71; color: white; cursor: pointer; border-radius: 0 0 10px 0; }
+
+        /* 状态栏 */
+        .hud-bar {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.9); padding: 10px 20px;
+            border-radius: 30px; font-weight: bold; color: #333;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: flex; gap: 20px;
+        }
+
+        /* 存档提示 */
+        #save-notify {
+            position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
+            background: #27ae60; color: white; padding: 10px 20px; border-radius: 20px;
+            opacity: 0; transition: opacity 0.5s;
+        }
     </style>
 </head>
 <body>
 
 <canvas id="gameCanvas"></canvas>
 
+<div id="save-notify">💾 进度已保存！</div>
+
 <div id="menu-layer">
-    <div class="menu-box" id="step-1">
-        <h1 style="color:#66fcf1; margin-top:0;">🚀 星际联机</h1>
-        <p>选择模式</p>
-        <button onclick="createRoom()">我是房主 (创建)</button>
-        <button onclick="showJoin()">我是队友 (加入)</button>
-    </div>
-
-    <div class="menu-box" id="step-create" style="display:none;">
-        <p>把这个 ID 发给朋友：</p>
-        <div id="room-id-display">生成中...</div>
-        <p class="loading">等待队友连接...</p>
-        <button onclick="location.reload()" style="background:#444; font-size:14px;">取消</button>
-    </div>
-
-    <div class="menu-box" id="step-join" style="display:none;">
-        <p>输入房主的 ID：</p>
-        <input type="text" id="join-input" placeholder="输入 ID (例如: x9z2)">
-        <button onclick="joinRoom()">连接</button>
+    <div class="menu-box" id="step-role">
+        <h1 style="color:#f1c40f;">🐱 喵屋大冒险 🐶</h1>
+        <p>请选择你的身份：</p>
+        <button onclick="selectRole('A')">我是 李晓晗 (幺幺/黄猫)</button>
         <br>
-        <button onclick="location.reload()" style="background:#444; font-size:14px;">返回</button>
+        <button class="secondary" onclick="selectRole('B')">我是 王子路 (石榴/白猫)</button>
+    </div>
+
+    <div class="menu-box" id="step-conn" style="display:none;">
+        <h2 id="role-title"></h2>
+        <div id="host-panel" style="display:none;">
+            <p>房主 ID (发给对方):</p>
+            <h1 id="my-id" style="color:#f1c40f; letter-spacing: 3px;">...</h1>
+            <p class="loading">等待伴侣连接...</p>
+        </div>
+        <div id="join-panel" style="display:none;">
+            <p>输入对方的 ID:</p>
+            <input type="text" id="target-id" placeholder="例如: X7Z2">
+            <br><br>
+            <button onclick="connectToPartner()">连接并开始</button>
+        </div>
+        <br>
+        <button onclick="loadGameLocal()" style="font-size:14px; background:#7f8c8d;">读取本地存档</button>
     </div>
 </div>
 
 <div id="ui-layer">
-    <div id="stats" class="hud">
-        <div>我: <span id="my-hp">100</span> HP</div>
-        <div style="color: #f50057">队友: <span id="p2-hp">???</span> HP</div>
+    <div class="hud-bar">
+        <span>💛 幺幺: <span id="hp-a">100</span>%</span>
+        <span>🤍 石榴: <span id="hp-b">100</span>%</span>
+        <span>🔑 钥匙: <span id="key-count">0</span>/3</span>
+        <span>🚩 关卡: <span id="level-num">1</span></span>
     </div>
-    <div style="position:absolute; bottom:20px; width:100%; text-align:center; color:rgba(255,255,255,0.5); font-size:12px;">
-        触摸/WASD 移动
+
+    <div style="position:absolute; right:20px; top:20px;">
+        <button style="padding:10px; font-size:14px; background:#9b59b6;" onclick="saveGame()">💾 保存</button>
+    </div>
+
+    <div id="chat-container">
+        <div id="chat-history"></div>
+        <div id="chat-input-area">
+            <input id="chat-input" placeholder="按回车发送..." onkeypress="if(event.keyCode===13) sendChat()">
+            <button id="chat-send" onclick="sendChat()">发送</button>
+        </div>
     </div>
 </div>
 
 <script>
-// --- 联机核心逻辑 (WebRTC) ---
-let peer = null;
-let conn = null;
-let myId = null;
-let isHost = false;
-let gameStarted = false;
+// --- 全局变量与配置 ---
+const CFG = {
+    roles: {
+        'A': { name: '李晓晗', pet: '幺幺', color: '#f1c40f', skin: '🐱' }, // 黄猫
+        'B': { name: '王子路', pet: '石榴', color: '#ecf0f1', skin: '😺' }  // 白猫
+    }
+};
 
-// 随机生成短 ID
-function generateShortId() {
-    return Math.random().toString(36).substring(2, 6).toUpperCase();
+let myRole = 'A'; // 默认
+let peer = null, conn = null;
+let gameRunning = false;
+let currentLevel = 1;
+
+// 游戏实体
+const player = { x: 300, y: 300, hp: 100, role: 'A' };
+const partner = { x: 300, y: 300, hp: 100, role: 'B', active: false };
+const keys = []; // 关卡中的钥匙
+const ghosts = []; // 敌人
+const exitDoor = { x: 0, y: 0, open: false };
+let collectedKeys = 0;
+
+// --- 1. 菜单与连接逻辑 ---
+
+function selectRole(role) {
+    myRole = role;
+    player.role = role;
+    partner.role = (role === 'A') ? 'B' : 'A'; // 对方是另一个
+    
+    document.getElementById('step-role').style.display = 'none';
+    document.getElementById('step-conn').style.display = 'block';
+    
+    const info = CFG.roles[role];
+    document.getElementById('role-title').innerText = `你好，${info.name} (${info.pet})`;
+    
+    // 初始化 Peer
+    initPeer();
 }
 
-function initPeer(id) {
-    // 使用公共服务器 (注意：PeerJS官方服务器有时候会不稳定，但这不需要你自己架设服务器)
-    peer = new Peer(id, { debug: 1 });
+function initPeer() {
+    // 如果是 A (幺幺)，默认作为房主；如果是 B (石榴)，默认作为加入者
+    // 为了简化，我们还是让用户手动输入 ID，这样更稳定
+    const isHost = (myRole === 'A'); 
     
-    peer.on('open', (id) => {
-        myId = id;
-        if(isHost) {
-            document.getElementById('room-id-display').innerText = id;
-        }
-    });
-
-    peer.on('connection', (c) => {
-        // 作为房主，被别人连了
-        if(isHost) {
+    if(isHost) {
+        document.getElementById('host-panel').style.display = 'block';
+        const id = Math.random().toString(36).substring(2, 6).toUpperCase();
+        peer = new Peer(id);
+        peer.on('open', (id) => { document.getElementById('my-id').innerText = id; });
+        peer.on('connection', (c) => {
             conn = c;
             setupConnection();
-        }
-    });
-    
-    peer.on('error', (err) => {
-        alert("连接错误: " + err.type);
-    });
+        });
+    } else {
+        document.getElementById('join-panel').style.display = 'block';
+        peer = new Peer(); // 自动ID
+    }
 }
 
-function createRoom() {
-    isHost = true;
-    document.getElementById('step-1').style.display = 'none';
-    document.getElementById('step-create').style.display = 'block';
-    initPeer(generateShortId());
-}
-
-function showJoin() {
-    document.getElementById('step-1').style.display = 'none';
-    document.getElementById('step-join').style.display = 'block';
-}
-
-function joinRoom() {
-    const destId = document.getElementById('join-input').value.toUpperCase();
-    if(!destId) return alert("请输入ID");
-    
-    // 作为加入者，初始化Peer不带ID（自动生成），然后连房主
-    peer = new Peer();
-    peer.on('open', () => {
-        conn = peer.connect(destId);
-        setupConnection();
-    });
-    peer.on('error', (err) => alert("找不到房间或连接失败"));
+function connectToPartner() {
+    const target = document.getElementById('target-id').value.toUpperCase();
+    if(!target) return alert("请输入ID");
+    conn = peer.connect(target);
+    setupConnection();
 }
 
 function setupConnection() {
     conn.on('open', () => {
-        console.log("连接成功！");
-        startGame(); // 开始游戏
+        console.log("连接建立！");
+        startGame();
+        // 发送一次问候
+        conn.send({ type: 'chat', name: '系统', msg: '伴侣已连接！一起去冒险吧！' });
     });
-
-    conn.on('data', (data) => {
-        // 收到对方的数据
-        handleNetworkData(data);
-    });
-    
-    conn.on('close', () => alert("对方断开了连接"));
+    conn.on('data', handleData);
+    conn.on('close', () => alert("连接断开"));
 }
 
-// --- 数据同步 ---
-function handleNetworkData(data) {
-    if(data.type === 'move') {
-        otherPlayer.x = data.x;
-        otherPlayer.y = data.y;
-        otherPlayer.hp = data.hp;
-        otherPlayer.active = true;
+function handleData(data) {
+    if (data.type === 'move') {
+        partner.x = data.x;
+        partner.y = data.y;
+        partner.hp = data.hp;
+        partner.active = true;
+    } else if (data.type === 'chat') {
+        addMessage(data.name, data.msg, false);
+    } else if (data.type === 'syncLevel') {
+        // 同步关卡进度
+        if(data.level > currentLevel) loadLevel(data.level);
     }
 }
 
-function sendMyData() {
-    if(conn && conn.open) {
+// --- 2. 游戏核心逻辑 ---
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() { W = window.innerWidth; H = window.innerHeight; canvas.width = W; canvas.height = H; }
+window.addEventListener('resize', resize);
+resize();
+
+// 输入控制
+const keysPressed = {};
+window.addEventListener('keydown', e => keysPressed[e.key] = true);
+window.addEventListener('keyup', e => keysPressed[e.key] = false);
+
+// 触摸控制 (简单的点击移动)
+let touchTarget = null;
+window.addEventListener('touchstart', e => {
+    touchTarget = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+});
+window.addEventListener('touchend', () => touchTarget = null);
+
+function startGame() {
+    document.getElementById('menu-layer').style.display = 'none';
+    document.getElementById('ui-layer').style.display = 'block';
+    gameRunning = true;
+    loadLevel(currentLevel);
+    loop();
+}
+
+function loadLevel(lv) {
+    currentLevel = lv;
+    document.getElementById('level-num').innerText = lv;
+    collectedKeys = 0;
+    
+    // 生成地图 (简单的随机生成)
+    keys.length = 0;
+    ghosts.length = 0;
+    
+    // 3把钥匙
+    for(let i=0; i<3; i++) {
+        keys.push({ x: Math.random() * (W-100) + 50, y: Math.random() * (H-100) + 50, collected: false });
+    }
+    
+    // 幽灵 (随关卡增加)
+    for(let i=0; i< lv + 1; i++) {
+        ghosts.push({ 
+            x: Math.random() * W, y: Math.random() * H, 
+            vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3 
+        });
+    }
+
+    // 出口
+    exitDoor.x = W - 100;
+    exitDoor.y = H - 100;
+    
+    // 重置位置
+    player.x = 100; player.y = 100;
+    
+    addMessage("系统", `第 ${lv} 关开始！收集 3 把钥匙打开大门！`, true);
+}
+
+function update() {
+    // 1. 玩家移动
+    const speed = 4;
+    if (keysPressed['w']) player.y -= speed;
+    if (keysPressed['s']) player.y += speed;
+    if (keysPressed['a']) player.x -= speed;
+    if (keysPressed['d']) player.x += speed;
+    
+    if(touchTarget) {
+        const dx = touchTarget.x - player.x;
+        const dy = touchTarget.y - player.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if(dist > 5) {
+            player.x += (dx/dist) * speed;
+            player.y += (dy/dist) * speed;
+        }
+    }
+
+    // 边界检查
+    if(player.x < 0) player.x = 0; if(player.x > W) player.x = W;
+    if(player.y < 0) player.y = 0; if(player.y > H) player.y = H;
+
+    // 2. 钥匙收集
+    keys.forEach(k => {
+        if(!k.collected && Math.hypot(player.x - k.x, player.y - k.y) < 30) {
+            k.collected = true;
+            collectedKeys++;
+            addMessage("系统", "你找到了一把钥匙！", true);
+            // 简单同步：如果我吃了，告诉对方 (这里简化为各自吃各自的逻辑，实际应该同步ID)
+        }
+    });
+
+    // 3. 幽灵逻辑 (简单的巡逻 + 碰撞)
+    ghosts.forEach(g => {
+        g.x += g.vx; g.y += g.vy;
+        if(g.x < 0 || g.x > W) g.vx *= -1;
+        if(g.y < 0 || g.y > H) g.vy *= -1;
+        
+        // 碰撞检测
+        if(Math.hypot(player.x - g.x, player.y - g.y) < 30) {
+            player.hp -= 1;
+            // 震动效果
+            if(navigator.vibrate) navigator.vibrate(50);
+        }
+    });
+
+    // 4. 通关判定
+    // 假设两人共享进度，这里简化为本地判定：如果钥匙够了，走到门
+    // 在真实多人里，应该同步 keys 状态。这里为了演示，只要我在本地吃到3个就算开门。
+    if(collectedKeys >= 3) {
+        exitDoor.open = true;
+        if(Math.hypot(player.x - exitDoor.x, player.y - exitDoor.y) < 50) {
+            currentLevel++;
+            loadLevel(currentLevel);
+            // 通知对方进入下一关
+            if(conn && conn.open) conn.send({ type: 'syncLevel', level: currentLevel });
+        }
+    }
+
+    // 5. 数据同步发送
+    if (conn && conn.open) {
         conn.send({
             type: 'move',
             x: player.x,
@@ -175,120 +341,156 @@ function sendMyData() {
             hp: player.hp
         });
     }
-}
-
-// --- 游戏引擎 ---
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-let SCREEN_W = window.innerWidth;
-let SCREEN_H = window.innerHeight;
-canvas.width = SCREEN_W;
-canvas.height = SCREEN_H;
-
-// 输入
-const Input = { keys: {}, touch: { active: false, x: 0, y: 0, ox: 0, oy: 0 } };
-window.addEventListener('keydown', e => Input.keys[e.key] = true);
-window.addEventListener('keyup', e => Input.keys[e.key] = false);
-window.addEventListener('touchstart', e => { 
-    Input.touch.active = true; 
-    Input.touch.ox = e.touches[0].clientX; Input.touch.oy = e.touches[0].clientY;
-    Input.touch.x = Input.touch.ox; Input.touch.y = Input.touch.oy;
-});
-window.addEventListener('touchmove', e => {
-    if(Input.touch.active) { Input.touch.x = e.touches[0].clientX; Input.touch.y = e.touches[0].clientY; }
-});
-window.addEventListener('touchend', () => Input.touch.active = false);
-
-// 实体
-const player = { x: SCREEN_W/2, y: SCREEN_H/2, size: 15, color: '#66fcf1', hp: 100 };
-const otherPlayer = { x: 0, y: 0, size: 15, color: '#f50057', hp: 100, active: false };
-const camera = { x: 0, y: 0 };
-const mapSize = 2000;
-
-// 简单的背景装饰
-const stars = [];
-for(let i=0; i<100; i++) stars.push({x: Math.random()*mapSize, y: Math.random()*mapSize, r: Math.random()*2});
-
-function startGame() {
-    document.getElementById('menu-layer').style.display = 'none';
-    document.getElementById('ui-layer').style.display = 'block';
-    gameStarted = true;
-    loop();
-}
-
-function update() {
-    // 移动逻辑
-    let dx = 0, dy = 0;
-    if(Input.keys['w']) dy = -1;
-    if(Input.keys['s']) dy = 1;
-    if(Input.keys['a']) dx = -1;
-    if(Input.keys['d']) dx = 1;
     
-    if(Input.touch.active) {
-        dx = Input.touch.x - Input.touch.ox;
-        dy = Input.touch.y - Input.touch.oy;
-        const len = Math.sqrt(dx*dx + dy*dy);
-        if(len > 0) { dx/=len; dy/=len; }
+    // UI 更新
+    const myRoleData = CFG.roles[player.role];
+    const partnerRoleData = CFG.roles[partner.role];
+    
+    document.getElementById(myRole === 'A' ? 'hp-a' : 'hp-b').innerText = Math.floor(player.hp);
+    document.getElementById(partner.role === 'A' ? 'hp-a' : 'hp-b').innerText = partner.active ? Math.floor(partner.hp) : '离线';
+    document.getElementById('key-count').innerText = collectedKeys;
+    
+    if(player.hp <= 0) {
+        alert("你晕倒了... 幺幺/石榴 会把你救回起点的！");
+        player.hp = 100;
+        player.x = 100; player.y = 100;
     }
-
-    player.x += dx * 4;
-    player.y += dy * 4;
-
-    // 摄像机跟随
-    camera.x = player.x - SCREEN_W/2;
-    camera.y = player.y - SCREEN_H/2;
-
-    // 网络同步频率 (每帧发送可能太快，实际可以优化，这里简单处理)
-    sendMyData();
-    
-    // UI更新
-    document.getElementById('my-hp').innerText = Math.floor(player.hp);
-    document.getElementById('p2-hp').innerText = otherPlayer.active ? Math.floor(otherPlayer.hp) : "离线";
 }
 
 function draw() {
-    // 背景
-    ctx.fillStyle = '#0b0c10';
-    ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    // 背景：深色地牢
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(0, 0, W, H);
     
-    // 绘制星星
-    ctx.fillStyle = '#fff';
-    stars.forEach(s => {
-        if(s.x > camera.x && s.x < camera.x + SCREEN_W && s.y > camera.y && s.y < camera.y + SCREEN_H) {
-            ctx.beginPath(); ctx.arc(s.x - camera.x, s.y - camera.y, s.r, 0, Math.PI*2); ctx.fill();
-        }
-    });
-    
-    // 绘制网格
-    ctx.strokeStyle = '#1f2833';
+    // 绘制网格地板
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.beginPath();
-    for(let x = -camera.x % 50; x < SCREEN_W; x+=50) { ctx.moveTo(x, 0); ctx.lineTo(x, SCREEN_H); }
-    for(let y = -camera.y % 50; y < SCREEN_H; y+=50) { ctx.moveTo(0, y); ctx.lineTo(SCREEN_W, y); }
+    for(let x=0; x<W; x+=40) { ctx.moveTo(x,0); ctx.lineTo(x,H); }
+    for(let y=0; y<H; y+=40) { ctx.moveTo(0,y); ctx.lineTo(W,y); }
     ctx.stroke();
 
+    // 绘制大门
+    ctx.fillStyle = exitDoor.open ? '#2ecc71' : '#e74c3c';
+    ctx.fillRect(exitDoor.x - 30, exitDoor.y - 30, 60, 60);
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px Arial';
+    ctx.fillText(exitDoor.open ? "入口" : "锁住", exitDoor.x-20, exitDoor.y);
+
+    // 绘制钥匙
+    ctx.font = '30px Arial';
+    keys.forEach(k => {
+        if(!k.collected) ctx.fillText('🔑', k.x-15, k.y+10);
+    });
+
+    // 绘制幽灵 (惊险元素)
+    ctx.font = '30px Arial';
+    ghosts.forEach(g => {
+        ctx.fillText('👻', g.x-15, g.y+10);
+        // 幽灵光环
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,0,0,0.3)';
+        ctx.arc(g.x, g.y, 40, 0, Math.PI*2);
+        ctx.stroke();
+    });
+
     // 绘制队友
-    if(otherPlayer.active) {
-        ctx.fillStyle = otherPlayer.color;
-        ctx.beginPath(); ctx.arc(otherPlayer.x - camera.x, otherPlayer.y - camera.y, otherPlayer.size, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = 'white'; ctx.font = "12px Arial"; ctx.fillText("队友", otherPlayer.x - camera.x - 10, otherPlayer.y - camera.y - 20);
+    if (partner.active) {
+        drawCat(partner.x, partner.y, partner.role, false);
     }
 
     // 绘制自己
-    ctx.fillStyle = player.color;
-    ctx.beginPath(); ctx.arc(player.x - camera.x, player.y - camera.y, player.size, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#66fcf1'; ctx.font = "12px Arial"; ctx.fillText("我", player.x - camera.x - 5, player.y - camera.y - 20);
+    drawCat(player.x, player.y, player.role, true);
+}
+
+function drawCat(x, y, role, isSelf) {
+    const info = CFG.roles[role];
+    
+    // 名字
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(info.name + (isSelf?"(我)":""), x, y - 35);
+    
+    // 宠物名字
+    ctx.fillStyle = info.color;
+    ctx.font = '10px Arial';
+    ctx.fillText(info.pet, x, y - 22);
+
+    // 猫咪本体 (用 Emoji 绘制，方便且高清)
+    ctx.font = '40px Arial';
+    // 幺幺(A)显示黄脸猫，石榴(B)显示白脸猫
+    ctx.fillText(info.skin, x, y + 10);
+    
+    // 血条
+    if(isSelf) {
+        ctx.fillStyle = '#c0392b';
+        ctx.fillRect(x - 20, y + 20, 40, 5);
+        ctx.fillStyle = '#2ecc71';
+        ctx.fillRect(x - 20, y + 20, 40 * (player.hp/100), 5);
+    }
 }
 
 function loop() {
-    if(!gameStarted) return;
+    if (!gameRunning) return;
     update();
     draw();
     requestAnimationFrame(loop);
 }
 
-window.addEventListener('resize', () => { SCREEN_W = window.innerWidth; SCREEN_H = window.innerHeight; canvas.width = SCREEN_W; canvas.height = SCREEN_H; });
+// --- 3. 聊天与存档系统 ---
+
+function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value;
+    if (!msg) return;
+    
+    const name = CFG.roles[player.role].name;
+    // 发给自己
+    addMessage(name, msg, true);
+    // 发给对方
+    if (conn && conn.open) {
+        conn.send({ type: 'chat', name: name, msg: msg });
+    }
+    input.value = '';
+}
+
+function addMessage(name, msg, isMe) {
+    const div = document.createElement('div');
+    div.style.marginBottom = '5px';
+    div.style.color = isMe ? '#f1c40f' : '#ecf0f1';
+    div.innerHTML = `<strong>${name}:</strong> ${msg}`;
+    
+    const history = document.getElementById('chat-history');
+    history.appendChild(div);
+    history.scrollTop = history.scrollHeight;
+}
+
+// 存档系统 (LocalStorage)
+function saveGame() {
+    const data = {
+        level: currentLevel,
+        role: player.role,
+        hp: player.hp
+    };
+    localStorage.setItem('cat_adventure_save', JSON.stringify(data));
+    
+    const notify = document.getElementById('save-notify');
+    notify.style.opacity = 1;
+    setTimeout(() => notify.style.opacity = 0, 2000);
+}
+
+function loadGameLocal() {
+    const json = localStorage.getItem('cat_adventure_save');
+    if(!json) return alert("还没有存档哦！");
+    
+    const data = JSON.parse(json);
+    currentLevel = data.level;
+    player.hp = data.hp;
+    // 角色通常由重新选择决定，这里仅读取进度
+    alert(`读取成功！即将进入第 ${data.level} 关`);
+    // 需要重新连接才能玩，所以只更新变量
+}
 
 </script>
 </body>
-
 </html>
